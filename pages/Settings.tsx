@@ -148,7 +148,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-8">
         <h2 className="text-lg font-bold text-white mb-2">{t('settings.language')}</h2>
         <p className="text-slate-400 text-sm mb-6">{t('settings.languageHint')}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             onClick={() => setLanguage('en')}
             className={`px-4 py-3 rounded-xl border transition-all text-left ${language === 'en' ? 'border-emerald-500 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
@@ -162,6 +162,13 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
           >
             <div className="font-bold">{t('settings.german')}</div>
             <div className="text-xs text-slate-400">Deutsch</div>
+          </button>
+          <button
+            onClick={() => setLanguage('nl')}
+            className={`px-4 py-3 rounded-xl border transition-all text-left ${language === 'nl' ? 'border-emerald-500 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            <div className="font-bold">{t('settings.dutch')}</div>
+            <div className="text-xs text-slate-400">Nederlands</div>
           </button>
         </div>
       </div>

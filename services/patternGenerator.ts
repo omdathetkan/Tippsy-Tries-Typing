@@ -32,6 +32,7 @@ const COMMON_WORDS_DB_EN = [
 export const COMMON_WORDS_DB_BY_LANGUAGE: Record<Language, string[]> = {
   de: COMMON_WORDS_DB_DE,
   en: COMMON_WORDS_DB_EN,
+  nl: COMMON_WORDS_DB_EN,
 };
 
 export const getCommonWords = (language: Language): string[] => {
@@ -241,6 +242,7 @@ const MEISTERKLASSE_TEXTS_EN: string[] = [
 export const MEISTERKLASSE_TEXTS: Record<Language, string[]> = {
   de: MEISTERKLASSE_TEXTS_DE,
   en: MEISTERKLASSE_TEXTS_EN,
+  nl: MEISTERKLASSE_TEXTS_EN,
 };
 
 // Profi-Texte (Stage 12): Sonderzeichen, E-Mails, Code, Preise, Gesetze
@@ -309,6 +311,7 @@ const PROFI_TEXTS_EN: string[] = [...MEISTERKLASSE_TEXTS_EN];
 export const PROFI_TEXTS: Record<Language, string[]> = {
   de: PROFI_TEXTS_DE,
   en: PROFI_TEXTS_EN,
+  nl: PROFI_TEXTS_EN,
 };
 
 // Coder Mode (Stage 13): Echter Code (JS/TS/Python Style)
@@ -351,6 +354,7 @@ const CODER_TEXTS_SHARED: string[] = [
 export const CODER_TEXTS: Record<Language, string[]> = {
   de: CODER_TEXTS_SHARED,
   en: CODER_TEXTS_SHARED,
+  nl: CODER_TEXTS_SHARED,
 };
 
 // Generates the content based on pedagogical levels

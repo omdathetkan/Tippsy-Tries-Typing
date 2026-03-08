@@ -55,6 +55,7 @@ const EXTRA_WORDS_EN = [
 const EXTRA_WORDS_BY_LANGUAGE: Record<Language, string[]> = {
   de: EXTRA_WORDS_DE,
   en: EXTRA_WORDS_EN,
+  nl: EXTRA_WORDS_EN,
 };
 
 // Large set of sentences (without trailing punctuation; punctuation added when stage allows)
@@ -126,6 +127,7 @@ const SENTENCES_DB_EN = [
 export const SENTENCES_DB_BY_LANGUAGE: Record<Language, string[]> = {
   de: SENTENCES_DB_DE,
   en: SENTENCES_DB_EN,
+  nl: SENTENCES_DB_EN,
 };
 
 /**
@@ -201,6 +203,7 @@ const MEISTERKLASSE_SENTENCES_EN = [
 export const MEISTERKLASSE_SENTENCES_BY_LANGUAGE: Record<Language, string[]> = {
   de: MEISTERKLASSE_SENTENCES_DE,
   en: MEISTERKLASSE_SENTENCES_EN,
+  nl: MEISTERKLASSE_SENTENCES_EN,
 };
 
 /**
@@ -267,6 +270,7 @@ const PROFI_SENTENCES_EN = [
 export const PROFI_SENTENCES_BY_LANGUAGE: Record<Language, string[]> = {
   de: PROFI_SENTENCES_DE,
   en: PROFI_SENTENCES_EN,
+  nl: PROFI_SENTENCES_EN,
 };
 
 const CODER_SENTENCES_DE = [
@@ -650,6 +654,7 @@ const CODER_SENTENCES_EN = [
 export const CODER_SENTENCES_BY_LANGUAGE: Record<Language, string[]> = {
   de: CODER_SENTENCES_DE,
   en: CODER_SENTENCES_EN,
+  nl: CODER_SENTENCES_EN,
 };
 
 // Code lines without string literals (no ' or ") for Coder "Wort & Satz" when CODER_TEXTS lines are filtered out (e.g. stage 13 has no quotes)

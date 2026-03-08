@@ -40,6 +40,17 @@ export const FINGER_NAMES: Record<Language, Record<Finger, string>> = {
     [Finger.RightRing]: 'Right Ring Finger',
     [Finger.RightPinky]: 'Right Pinky',
   },
+  nl: {
+    [Finger.LeftPinky]: 'Linker Pink',
+    [Finger.LeftRing]: 'Linker Ringvinger',
+    [Finger.LeftMiddle]: 'Linker Middelvinger',
+    [Finger.LeftIndex]: 'Linker Wijsvinger',
+    [Finger.Thumb]: 'Duim',
+    [Finger.RightIndex]: 'Rechter Wijsvinger',
+    [Finger.RightMiddle]: 'Rechter Middelvinger',
+    [Finger.RightRing]: 'Rechter Ringvinger',
+    [Finger.RightPinky]: 'Rechter Pink',
+  },
 };
 
 export const KEYBOARD_LAYOUTS: Record<KeyboardLayout, KeyConfig[][]> = {

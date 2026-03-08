@@ -10,7 +10,7 @@ export enum Finger {
   RightPinky = 'R_Pinky',
 }
 
-export type Language = 'de' | 'en';
+export type Language = 'de' | 'en' | 'nl';
 
 export type KeyboardLayout = 'qwertz' | 'qwerty';
 

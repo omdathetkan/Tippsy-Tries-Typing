@@ -16,7 +16,7 @@ const getStoredValue = (key: string) => {
 
 const getInitialLanguage = (): Language => {
   const stored = getStoredValue(LANGUAGE_STORAGE_KEY);
-  if (stored === 'de' || stored === 'en') return stored;
+  if (stored === 'de' || stored === 'en' || stored === 'nl') return stored as Language;
   return 'en';
 };
 
