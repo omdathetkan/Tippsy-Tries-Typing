@@ -114,3 +114,5 @@ export enum GameState {
 }
 
 export type GameMode = 'STANDARD' | 'PRACTICE' | 'WORDS_SENTENCES';
+
+export type GameDisplayMode = 'classic' | 'platform';

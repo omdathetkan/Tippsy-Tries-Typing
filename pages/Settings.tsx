@@ -58,7 +58,7 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ onBack }) => {
-  const { language, keyboardLayout, soundEnabled, zeroMistakesMode, setLanguage, setKeyboardLayout, setSoundEnabled, setZeroMistakesMode } = useSettings();
+  const { language, keyboardLayout, soundEnabled, zeroMistakesMode, displayMode, setLanguage, setKeyboardLayout, setSoundEnabled, setZeroMistakesMode, setDisplayMode } = useSettings();
   const { profiles, activeProfile, activeProfileId, addProfile, removeProfile, updateProfileName, updateProfileAvatar, updateActiveProgress } = useProfile();
   const { t } = useI18n();
   const { playMenuClick } = useSound();
@@ -457,6 +457,27 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
           >
             <div className="font-bold">{t('settings.qwertz')}</div>
             <div className="text-xs text-slate-400">QWERTZ</div>
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-8">
+        <h2 className="text-lg font-bold text-white mb-2">{t('settings.displayMode')}</h2>
+        <p className="text-slate-400 text-sm mb-6">{t('settings.displayModeHint')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => setDisplayMode('classic')}
+            className={`px-4 py-3 rounded-xl border transition-all text-left ${displayMode === 'classic' ? 'border-emerald-500 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            <div className="font-bold">{t('settings.displayModeClassic')}</div>
+            <div className="text-xs text-slate-400">{t('settings.displayModeClassicDesc')}</div>
+          </button>
+          <button
+            onClick={() => setDisplayMode('platform')}
+            className={`px-4 py-3 rounded-xl border transition-all text-left ${displayMode === 'platform' ? 'border-emerald-500 bg-emerald-500/10 text-white' : 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            <div className="font-bold">{t('settings.displayModePlatform')}</div>
+            <div className="text-xs text-slate-400">{t('settings.displayModePlatformDesc')}</div>
           </button>
         </div>
       </div>

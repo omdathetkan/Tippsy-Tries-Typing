@@ -3,6 +3,7 @@ import { Stage, GameStats, GameMode, ErrorCountByChar } from '../types';
 import { KEYBOARD_LAYOUTS, FINGER_NAMES, FINGER_COLORS, MAX_SUB_LEVELS } from '../constants';
 import VirtualKeyboard from './VirtualKeyboard';
 import TypingTape from './TypingTape';
+import PlatformRunner from './PlatformRunner';
 import { WpmDisplay } from './WpmDisplay';
 import { RotateCcw, Home, Crown, Zap, BookOpen, Infinity } from 'lucide-react';
 import { getRandomChunk } from '../services/endlessContent';
@@ -26,7 +27,7 @@ const FALLBACK_CONTENT = 'fff jjj fff jjj';
 const EN_DASH = '\u2013';
 
 const TypingGame: React.FC<TypingGameProps> = ({ stage, subLevelId, content: contentProp, onFinish, onBack, onRetry, onSaveStats, gameMode = 'STANDARD' }) => {
-  const { keyboardLayout, zeroMistakesMode } = useSettings();
+  const { keyboardLayout, zeroMistakesMode, displayMode } = useSettings();
   const { t, language } = useI18n();
   const { playTyping, playError } = useSound();
   const keyboardLayoutConfig = KEYBOARD_LAYOUTS[keyboardLayout];
@@ -389,8 +390,24 @@ const TypingGame: React.FC<TypingGameProps> = ({ stage, subLevelId, content: con
         </button>
       </div>
 
-      {/* Typing Area - Scrolling Tape */}
-      <TypingTape content={content} inputIndex={inputIndex} errorShake={errorShake} />
+      {/* Typing Area */}
+      {displayMode === 'platform' ? (
+        <PlatformRunner
+          content={content}
+          inputIndex={inputIndex}
+          errorShake={errorShake}
+          fingerMap={fingerMap}
+          stageId={stage.id}
+          subLevelId={subLevelId}
+          onObstacleHit={() => {
+            const stats = getCurrentStats();
+            if (stats && onSaveStats) onSaveStats(stats);
+            onRetry();
+          }}
+        />
+      ) : (
+        <TypingTape content={content} inputIndex={inputIndex} errorShake={errorShake} />
+      )}
 
       {/* Finger Hint */}
       <div className="flex items-center justify-center gap-3 mb-4 h-8">

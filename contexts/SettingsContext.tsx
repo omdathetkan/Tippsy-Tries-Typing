@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import { KeyboardLayout, Language } from '../types';
+import { KeyboardLayout, Language, GameDisplayMode } from '../types';
 
 const LANGUAGE_STORAGE_KEY = 'tippsy_language';
 const KEYBOARD_STORAGE_KEY = 'tippsy_keyboard_layout';
 const SOUND_STORAGE_KEY = 'tippsy_sound_enabled';
 const ZERO_MISTAKES_STORAGE_KEY = 'tippsy_zero_mistakes_mode';
+const DISPLAY_MODE_STORAGE_KEY = 'tippsy_display_mode';
 
 const getStoredValue = (key: string) => {
   try {
@@ -39,6 +40,12 @@ const getInitialZeroMistakesMode = (): boolean => {
   return false;
 };
 
+const getInitialDisplayMode = (): GameDisplayMode => {
+  const stored = getStoredValue(DISPLAY_MODE_STORAGE_KEY);
+  if (stored === 'classic' || stored === 'platform') return stored;
+  return 'classic';
+};
+
 interface SettingsContextValue {
   language: Language;
   keyboardLayout: KeyboardLayout;
@@ -48,6 +55,8 @@ interface SettingsContextValue {
   setKeyboardLayout: (layout: KeyboardLayout) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setZeroMistakesMode: (enabled: boolean) => void;
+  displayMode: GameDisplayMode;
+  setDisplayMode: (mode: GameDisplayMode) => void;
 }
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -57,6 +66,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [keyboardLayout, setKeyboardLayout] = useState<KeyboardLayout>(() => getInitialKeyboardLayout(getInitialLanguage()));
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => getInitialSoundEnabled());
   const [zeroMistakesMode, setZeroMistakesMode] = useState<boolean>(() => getInitialZeroMistakesMode());
+  const [displayMode, setDisplayMode] = useState<GameDisplayMode>(() => getInitialDisplayMode());
 
   useEffect(() => {
     try {
@@ -93,6 +103,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [zeroMistakesMode]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, displayMode);
+    } catch {
+      // ignore
+    }
+  }, [displayMode]);
+
   const value = useMemo(() => ({
     language,
     keyboardLayout,
@@ -101,8 +119,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setLanguage,
     setKeyboardLayout,
     setSoundEnabled,
-    setZeroMistakesMode
-  }), [language, keyboardLayout, soundEnabled, zeroMistakesMode]);
+    setZeroMistakesMode,
+    displayMode,
+    setDisplayMode,
+  }), [language, keyboardLayout, soundEnabled, zeroMistakesMode, displayMode]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };
