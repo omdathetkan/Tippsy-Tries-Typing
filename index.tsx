@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,7 +13,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <SettingsProvider>
-      <App />
+      <ProfileProvider>
+        <App />
+      </ProfileProvider>
     </SettingsProvider>
   </React.StrictMode>
 );

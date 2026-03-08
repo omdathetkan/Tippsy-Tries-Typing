@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameState, UserProgress, Stage } from '../types';
-import { Keyboard, User, X, Info, Settings as SettingsIcon } from 'lucide-react';
+import { Keyboard, X, Info, Settings as SettingsIcon } from 'lucide-react';
 import Mascot from '../components/Mascot';
 import StageCard from '../components/StageCard';
 import OnboardingModal from '../components/OnboardingModal';
+import ProfileSwitcher from '../components/ProfileSwitcher';
 import { useI18n } from '../hooks/useI18n';
 import { useSound } from '../hooks/useSound';
 import { ENDLESS_STAGE_ID, MAX_SUB_LEVELS } from '../constants';
@@ -206,20 +207,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
           >
             <SettingsIcon size={18} />
           </button>
-          <button 
-            data-testid="open-stats"
-            onClick={() => { playMenuClick(); onOpenStats(); }}
-            className="group flex items-center gap-3 px-4 py-2 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all border border-slate-700/50"
-            title={t('menu.statsTitle')}
-          >
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] uppercase text-slate-500 font-bold">{t('menu.profileLabel')}</p>
-              <p className="text-xs font-mono font-bold">{progress.stats.totalCharsTyped.toLocaleString(language === 'de' ? 'de-DE' : 'en-US')} {t('menu.characters')}</p>
-            </div>
-            <div className="p-2 bg-slate-700 rounded-full group-hover:bg-slate-600 transition-colors">
-              <User size={20} />
-            </div>
-          </button>
+          <ProfileSwitcher onOpenStats={onOpenStats} />
         </div>
       </header>
 

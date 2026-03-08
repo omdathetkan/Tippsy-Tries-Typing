@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { GameState, Stage, GameStats, UserProgress, GameMode, SessionRecord } from '../types';
 import { ENDLESS_STAGE_ID, MAX_SUB_LEVELS, getStages } from '../constants';
 import { generatePatternLevel } from '../services/patternGenerator';
 import { generateWordSentenceLevel } from '../services/wordSentenceGenerator';
 import { useSettings } from '../contexts/SettingsContext';
+import { useProfile } from '../contexts/ProfileContext';
 import { useSound } from './useSound';
 
 const SESSION_HISTORY_MAX = 30;
@@ -41,6 +42,7 @@ function computeUnlock(
 export const useGameEngine = () => {
   const { language, keyboardLayout } = useSettings();
   const { playLevelComplete } = useSound();
+  const { activeProfile, updateActiveProgress } = useProfile();
   const stages = useMemo(() => getStages(language, keyboardLayout), [language, keyboardLayout]);
 
   const [gameState, setGameState] = useState<GameState>(() => {
@@ -56,46 +58,12 @@ export const useGameEngine = () => {
       return GameState.START;
     }
   });
-  
-  const [progress, setProgress] = useState<UserProgress>(() => {
-    try {
-      const saved = localStorage.getItem('tippsy_progress');
-      const parsed = saved ? JSON.parse(saved) : {};
-      return {
-        unlockedStageId: parsed.unlockedStageId ?? 1,
-        unlockedSubLevelId: parsed.unlockedSubLevelId ?? 1,
-        stats: parsed.stats ?? {
-          totalCharsTyped: 0,
-          totalTimePlayed: 0,
-          gamesPlayed: 0,
-          highestWpm: 0,
-          averageWpm: 0,
-          averageAccuracy: 0
-        },
-        lastSessionByKey: parsed.lastSessionByKey ?? {},
-        sessionHistory: parsed.sessionHistory ?? [],
-        perStageBest: parsed.perStageBest ?? {},
-        errorCountByChar: parsed.errorCountByChar ?? {}
-      };
-    } catch {
-      return {
-        unlockedStageId: 1,
-        unlockedSubLevelId: 1,
-        stats: {
-          totalCharsTyped: 0,
-          totalTimePlayed: 0,
-          gamesPlayed: 0,
-          highestWpm: 0,
-          averageWpm: 0,
-          averageAccuracy: 0
-        },
-        lastSessionByKey: {},
-        sessionHistory: [],
-        perStageBest: {},
-        errorCountByChar: {}
-      };
-    }
-  });
+
+  // Progress is sourced from and saved back to ProfileContext
+  const [progress, setProgress] = useState<UserProgress>(activeProfile.progress);
+
+  // Keep a ref of the active profile id to detect profile switches
+  const prevActiveProfileIdRef = useRef(activeProfile.id);
 
   // Current Session State
   const [currentStage, setCurrentStage] = useState<Stage | null>(null);
@@ -139,9 +107,23 @@ export const useGameEngine = () => {
     }
   }, [stages]);
 
+  // Persist progress changes to ProfileContext (which handles localStorage)
   useEffect(() => {
-    localStorage.setItem('tippsy_progress', JSON.stringify(progress));
-  }, [progress]);
+    updateActiveProgress(progress);
+  }, [progress, updateActiveProgress]);
+
+  // When the active profile switches, load the new profile's progress and return to menu
+  // (but stay on SETTINGS so the user isn't kicked out when adding a profile there)
+  useEffect(() => {
+    if (activeProfile.id === prevActiveProfileIdRef.current) return;
+    prevActiveProfileIdRef.current = activeProfile.id;
+    setProgress(activeProfile.progress);
+    setGameState(prev => prev === GameState.SETTINGS ? GameState.SETTINGS : GameState.MENU);
+    setCurrentStage(null);
+    setSessionStartProgress(null);
+    setLastStats(null);
+    setPreviousLevelStats(null);
+  }, [activeProfile.id, activeProfile.progress]);
 
   const handleCompleteTutorial = () => {
     try {

@@ -1,12 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useProfile } from '../contexts/ProfileContext';
 import { useI18n } from '../hooks/useI18n';
 import { useSound } from '../hooks/useSound';
-import { Home, Download, Upload, Trash2, Info, AlertTriangle, X } from 'lucide-react';
+import { Home, Download, Upload, Trash2, Info, AlertTriangle, X, Plus, Pencil, Check } from 'lucide-react';
 import { UserProgress, GameStats } from '../types';
 import { MAX_SUB_LEVELS } from '../constants';
+import { emptyProgress } from '../contexts/ProfileContext';
 
-const PROGRESS_STORAGE_KEY = 'tippsy_progress';
+const PROFILE_EMOJIS = [
+  '🐱','🐶','🦊','🐼','🐨','🦁','🐯','🐸',
+  '🐧','🦉','🐙','🦋','🦄','🦖','🤖','👻',
+  '🎃','🧸','🌟','🔥','⚡','💎','🎮','🎸',
+  '🚀','🏆','🌈','🍕','🌺','🎯','🧩','🦦',
+  '🐬','🦚','🦝','🎪',
+];
 
 /** Validate and normalize parsed JSON to UserProgress; return null if invalid. */
 function parseProgressJson(raw: unknown): UserProgress | null {
@@ -51,20 +59,69 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const { language, keyboardLayout, soundEnabled, zeroMistakesMode, setLanguage, setKeyboardLayout, setSoundEnabled, setZeroMistakesMode } = useSettings();
+  const { profiles, activeProfile, activeProfileId, addProfile, removeProfile, updateProfileName, updateProfileAvatar, updateActiveProgress } = useProfile();
   const { t } = useI18n();
   const { playMenuClick } = useSound();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showDeleteConfirmId, setShowDeleteConfirmId] = useState<string | null>(null);
+
+  // Profile name editing state
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingNameValue, setEditingNameValue] = useState('');
+
+  // Emoji picker state
+  const [showEmojiPickerForId, setShowEmojiPickerForId] = useState<string | null>(null);
+
+  // Add-profile form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileAvatar, setNewProfileAvatar] = useState('🐶');
+
+  // ── Profile handlers ────────────────────────────────────────────────────────
+
+  const handleStartEditName = (id: string, currentName: string) => {
+    setEditingNameId(id);
+    setEditingNameValue(currentName);
+  };
+
+  const handleCommitName = () => {
+    if (editingNameId && editingNameValue.trim()) {
+      updateProfileName(editingNameId, editingNameValue.trim());
+    }
+    setEditingNameId(null);
+  };
+
+  const handlePickAvatar = (id: string, emoji: string) => {
+    updateProfileAvatar(id, emoji);
+    setShowEmojiPickerForId(null);
+  };
+
+  const handleAddProfile = () => {
+    const name = newProfileName.trim() || `Player ${profiles.length + 1}`;
+    addProfile(name, newProfileAvatar);
+    setNewProfileName('');
+    setNewProfileAvatar('🐶');
+    setShowAddForm(false);
+  };
+
+  const handleDeleteProfile = (id: string) => {
+    if (profiles.length <= 1) return;
+    removeProfile(id);
+    setShowDeleteConfirmId(null);
+  };
+
+  // ── Data handlers ────────────────────────────────────────────────────────────
 
   const handleExport = () => {
     playMenuClick();
     try {
-      const json = localStorage.getItem(PROGRESS_STORAGE_KEY) ?? '{}';
+      const json = JSON.stringify(activeProfile.progress);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'tippsy-progress.json';
+      a.download = `tippsy-progress-${activeProfile.name.replace(/\s+/g, '-')}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -90,7 +147,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
           alert(t('settings.importError'));
           return;
         }
-        localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+        updateActiveProgress(progress);
         window.location.reload();
       } catch {
         alert(t('settings.importError'));
@@ -106,12 +163,9 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
 
   const handleResetConfirm = () => {
     playMenuClick();
-    try {
-      localStorage.removeItem(PROGRESS_STORAGE_KEY);
-      window.location.reload();
-    } catch {
-      // ignore
-    }
+    updateActiveProgress(emptyProgress());
+    setShowResetModal(false);
+    window.location.reload();
   };
 
   const handleResetCancel = () => {
@@ -126,6 +180,14 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
         playMenuClick();
         if (showResetModal) {
           setShowResetModal(false);
+        } else if (showEmojiPickerForId) {
+          setShowEmojiPickerForId(null);
+        } else if (editingNameId) {
+          setEditingNameId(null);
+        } else if (showDeleteConfirmId) {
+          setShowDeleteConfirmId(null);
+        } else if (showAddForm) {
+          setShowAddForm(false);
         } else {
           onBack();
         }
@@ -133,7 +195,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onBack, playMenuClick, showResetModal]);
+  }, [onBack, playMenuClick, showResetModal, showEmojiPickerForId, editingNameId, showDeleteConfirmId, showAddForm]);
 
   return (
     <div className="flex-1 container mx-auto px-4 py-8 max-w-3xl flex flex-col h-full">
@@ -144,6 +206,211 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
         <h1 className="text-3xl font-bold text-white">{t('settings.title')}</h1>
       </div>
       <p className="text-slate-500 text-xs mb-8">{t('statistics.escHint')}</p>
+      
+      {/* ── Profiles section ─────────────────────────────────────────────────── */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-8">
+        <h2 className="text-lg font-bold text-white mb-6">{t('profiles.title')}</h2>
+
+        <div className="flex flex-col gap-3">
+          {profiles.map(profile => (
+            <div
+              key={profile.id}
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-colors ${
+                profile.id === activeProfileId
+                  ? 'border-emerald-500/60 bg-emerald-500/8'
+                  : 'border-slate-700 bg-slate-800/50'
+              }`}
+            >
+              {/* Avatar button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowEmojiPickerForId(
+                    showEmojiPickerForId === profile.id ? null : profile.id
+                  )}
+                  className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-700/60 hover:bg-slate-600/70 transition-colors border border-slate-600/50 hover:border-slate-500 leading-none"
+                  title={t('profiles.pickAvatar')}
+                  aria-label={t('profiles.pickAvatar')}
+                  style={{ lineHeight: 1 }}
+                >
+                  {profile.avatar}
+                </button>
+
+                {/* Emoji picker popover */}
+                {showEmojiPickerForId === profile.id && (
+                  <div className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-3 w-[224px]">
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {PROFILE_EMOJIS.map(emoji => (
+                        <button
+                          key={emoji}
+                          onClick={() => handlePickAvatar(profile.id, emoji)}
+                          className={`text-2xl w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-700 ${
+                            profile.avatar === emoji ? 'bg-emerald-500/20 ring-1 ring-emerald-500' : ''
+                          }`}
+                          style={{ lineHeight: 1 }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Name — editable inline */}
+              <div className="flex-1 min-w-0">
+                {editingNameId === profile.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      value={editingNameValue}
+                      onChange={e => setEditingNameValue(e.target.value)}
+                      onBlur={handleCommitName}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { e.preventDefault(); handleCommitName(); }
+                        if (e.key === 'Escape') { e.preventDefault(); setEditingNameId(null); }
+                      }}
+                      maxLength={24}
+                      className="flex-1 bg-slate-800 text-white rounded-lg px-3 py-1.5 text-sm border border-emerald-500/50 focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      onMouseDown={e => { e.preventDefault(); handleCommitName(); }}
+                      className="p-1.5 text-emerald-400 hover:text-emerald-300"
+                      aria-label="Save"
+                    >
+                      <Check size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-white truncate">{profile.name}</span>
+                    {profile.id === activeProfileId && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 shrink-0">
+                        {t('profiles.activeLabel')}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleStartEditName(profile.id, profile.name)}
+                      className="p-1 text-slate-500 hover:text-slate-300 transition-colors shrink-0"
+                      title={t('profiles.editName') ?? 'Edit name'}
+                      aria-label={t('profiles.editName') ?? 'Edit name'}
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+                )}
+                <p className="text-slate-500 text-xs mt-0.5">
+                  {profile.progress.stats.gamesPlayed} {t('statistics.gamesPlayedSub')} · {profile.progress.stats.totalCharsTyped.toLocaleString()} {t('menu.characters')}
+                </p>
+              </div>
+
+              {/* Delete button */}
+              {profiles.length > 1 && (
+                <div className="shrink-0">
+                  {showDeleteConfirmId === profile.id ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleDeleteProfile(profile.id)}
+                        className="px-2 py-1 text-xs rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-500/30 transition-colors font-medium"
+                      >
+                        {t('profiles.deleteProfile')}
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteConfirmId(null)}
+                        className="p-1 text-slate-400 hover:text-white"
+                        aria-label={t('settings.resetCancel')}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowDeleteConfirmId(profile.id)}
+                      className="p-2 text-slate-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-500/10"
+                      title={t('profiles.deleteProfile')}
+                      aria-label={t('profiles.deleteProfile')}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Add-profile form */}
+        {showAddForm ? (
+          <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800/50">
+            {/* Avatar picker for new profile */}
+            <div className="relative">
+              <button
+                onClick={() => setShowEmojiPickerForId(
+                  showEmojiPickerForId === '__new__' ? null : '__new__'
+                )}
+                className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl bg-slate-700/60 hover:bg-slate-600/70 transition-colors border border-slate-600/50 leading-none"
+                title={t('profiles.pickAvatar')}
+                style={{ lineHeight: 1 }}
+              >
+                {newProfileAvatar}
+              </button>
+              {showEmojiPickerForId === '__new__' && (
+                <div className="absolute left-0 top-full mt-2 z-50 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-3 w-[224px]">
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {PROFILE_EMOJIS.map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => { setNewProfileAvatar(emoji); setShowEmojiPickerForId(null); }}
+                        className={`text-2xl w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-slate-700 ${
+                          newProfileAvatar === emoji ? 'bg-emerald-500/20 ring-1 ring-emerald-500' : ''
+                        }`}
+                        style={{ lineHeight: 1 }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <input
+              autoFocus
+              placeholder={t('profiles.namePlaceholder')}
+              value={newProfileName}
+              onChange={e => setNewProfileName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAddProfile(); }
+                if (e.key === 'Escape') { e.preventDefault(); setShowAddForm(false); }
+              }}
+              maxLength={24}
+              className="flex-1 bg-slate-700 text-white rounded-xl px-4 py-2.5 text-sm border border-slate-600 focus:outline-none focus:border-emerald-500 w-full sm:w-auto"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddProfile}
+                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold text-sm transition-colors"
+              >
+                {t('profiles.add')}
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="px-3 py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:text-white text-sm transition-colors"
+              >
+                {t('profiles.cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { playMenuClick(); setShowAddForm(true); }}
+            className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition-colors text-sm w-full justify-center"
+          >
+            <Plus size={16} />
+            <span>{t('profiles.addProfile')}</span>
+          </button>
+        )}
+      </div>
 
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 mb-8">
         <h2 className="text-lg font-bold text-white mb-2">{t('settings.language')}</h2>

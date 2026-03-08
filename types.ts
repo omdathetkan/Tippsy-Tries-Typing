@@ -95,6 +95,14 @@ export interface UserProgress {
   errorCountByChar?: ErrorCountByChar;
 }
 
+export interface Profile {
+  id: string;
+  name: string;
+  /** Emoji character used as avatar */
+  avatar: string;
+  progress: UserProgress;
+}
+
 export enum GameState {
   START = 'START',
   MENU = 'MENU',
