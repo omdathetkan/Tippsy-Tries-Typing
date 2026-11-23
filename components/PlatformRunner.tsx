@@ -1,4 +1,23 @@
-import React, { memo, useState, useEffect, useRef } from 'react';
+import React, { memo, useState, useEffect, useRef, useMemo } from 'react';
+
+// Deterministically generate bonus ranges for a given content string.
+// Uses a simple LCG seeded by content length so the same level always
+// produces the same bonus positions.
+function generateBonusRanges(content: string): Array<{ start: number; end: number }> {
+  const ranges: Array<{ start: number; end: number }> = [];
+  const bonusLen = 7;
+  const minGap   = 28;
+  let i    = 14;
+  let seed = content.length ^ 0xdeadbeef;
+  while (i + bonusLen <= content.length - 10) {
+    seed = Math.imul(seed ^ (seed >>> 17), 0x45d9f3b);
+    seed = Math.imul(seed ^ (seed >>> 13), 0xc2b2ae35);
+    const extra = Math.abs(seed & 0xf); // 0-15 extra chars spacing
+    ranges.push({ start: i, end: i + bonusLen - 1 });
+    i += bonusLen + minGap + extra;
+  }
+  return ranges;
+}
 
 // Maps the Tailwind bg class (from FINGER_COLORS) → CSS colour triple used for blocks
 const FINGER_COLOR_HEX: Record<string, { bg: string; border: string; text: string }> = {
@@ -47,6 +66,15 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
   // Set of obstacle indices currently mid-explosion animation
   const [exploding, setExploding] = useState<Set<number>>(new Set());
 
+  // ── Bonus sequences ─────────────────────────────────────────────────────
+  const bonusRanges = useMemo(() => generateBonusRanges(content), [content]);
+  const [collectedBonuses, setCollectedBonuses] = useState<Set<number>>(new Set());
+  const [activeBonusIdx, setActiveBonusIdx]     = useState<number | null>(null);
+  const activeBonusIdxRef  = useRef<number | null>(null);
+  const bonusHadErrorRef   = useRef(false);
+  const [coinAnims, setCoinAnims] = useState<Array<{ id: number; x: number }>>([]);
+  const coinAnimIdRef = useRef(0);
+
   // Streak: consecutive correct keystrokes without a mistake
   const [streak, setStreak] = useState(0);
   const prevIndexRef = useRef(inputIndex);
@@ -62,9 +90,40 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
   useEffect(() => {
     if (errorShake && !prevErrorShakeRef.current) {
       setStreak(0);
+      // Cancel any active bonus sequence on error
+      if (activeBonusIdxRef.current !== null) {
+        bonusHadErrorRef.current = true;
+        setActiveBonusIdx(null);
+        activeBonusIdxRef.current = null;
+      }
     }
     prevErrorShakeRef.current = errorShake;
   }, [errorShake]);
+
+  // Track bonus sequence entry and completion
+  useEffect(() => {
+    for (let r = 0; r < bonusRanges.length; r++) {
+      const range = bonusRanges[r];
+      if (inputIndex === range.start) {
+        setActiveBonusIdx(r);
+        activeBonusIdxRef.current = r;
+        bonusHadErrorRef.current = false;
+      }
+      if (inputIndex === range.end + 1 && activeBonusIdxRef.current === r) {
+        if (!bonusHadErrorRef.current) {
+          setCollectedBonuses(prev => new Set([...prev, r]));
+          const id = ++coinAnimIdRef.current;
+          const seqLen = range.end - range.start + 1;
+          const cx = displayTranslate + (range.start * CHAR_WIDTH) + (seqLen * CHAR_WIDTH) / 2;
+          setCoinAnims(prev => [...prev, { id, x: cx }]);
+          setTimeout(() => setCoinAnims(prev => prev.filter(a => a.id !== id)), 950);
+        }
+        setActiveBonusIdx(null);
+        activeBonusIdxRef.current = null;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputIndex]);
 
   // 0 = normal, 1 = warming up (3+), 2 = turbo (7+), 3 = hyper (12+)
   const streakLevel = streak >= 12 ? 3 : streak >= 7 ? 2 : streak >= 3 ? 1 : 0;
@@ -118,6 +177,11 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
     lastTimeRef.current = null;
     hitCalledRef.current = false;
     setDisplayTranslate(ACTIVE_X + CHAR_WIDTH);
+    setCollectedBonuses(new Set());
+    setActiveBonusIdx(null);
+    activeBonusIdxRef.current = null;
+    bonusHadErrorRef.current = false;
+    setCoinAnims([]);
   }, [content]);
 
   // Main scroll loop — runs once per stage; dynamic values read via refs
@@ -212,6 +276,15 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
           60%  { transform: scale(1.2); opacity: 1; }
           100% { transform: scale(1);   opacity: 1; }
         }
+        @keyframes pr-coin-collect {
+          0%   { transform: translateY(0)    scale(1);   opacity: 1; }
+          55%  { transform: translateY(-52px) scale(1.35); opacity: 1; }
+          100% { transform: translateY(-88px) scale(0.7); opacity: 0; }
+        }
+        @keyframes pr-bonus-glow {
+          0%, 100% { box-shadow: 0 0 10px rgba(251,191,36,0.45), inset 0 0 6px rgba(251,191,36,0.08); }
+          50%      { box-shadow: 0 0 22px rgba(251,191,36,0.75), inset 0 0 10px rgba(251,191,36,0.15); }
+        }
       `}</style>
 
       {/* Decorative stars */}
@@ -230,6 +303,48 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
           }}
         />
       ))}
+
+      {/* ── Bonus sequence background bars (rendered in scene coords) ─────── */}
+      {bonusRanges.map((range, r) => {
+        if (collectedBonuses.has(r)) return null;
+        const barLeft  = displayTranslate + range.start * CHAR_WIDTH + 4;
+        const barWidth = (range.end - range.start + 1) * CHAR_WIDTH - 8;
+        const isActive = activeBonusIdx === r;
+        return (
+          <div
+            key={r}
+            style={{
+              position: 'absolute',
+              bottom: GROUND_H,
+              left: barLeft,
+              width: barWidth,
+              height: BLOCK_H + 8,
+              background: isActive
+                ? 'rgba(251,191,36,0.13)'
+                : 'rgba(251,191,36,0.055)',
+              border: `2px solid rgba(251,191,36,${isActive ? '0.85' : '0.35'})`,
+              borderRadius: 10,
+              animation: isActive ? 'pr-bonus-glow 1s ease-in-out infinite' : undefined,
+              pointerEvents: 'none',
+              transition: 'border-color 0.2s',
+            }}
+          >
+            {/* Coin icon label at top-center of bar */}
+            <div style={{
+              position: 'absolute',
+              top: -14,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 12,
+              lineHeight: 1,
+              opacity: isActive ? 1 : 0.55,
+              transition: 'opacity 0.2s',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}>🪙</div>
+          </div>
+        );
+      })}
 
       {/* ── Scrolling obstacle world ─────────────────────────────────────── */}
       <div
@@ -356,6 +471,48 @@ const PlatformRunner: React.FC<PlatformRunnerProps> = memo(({
           }}
         >
           ▼
+        </div>
+      )}
+
+      {/* ── Coin pop animations ──────────────────────────────────────────── */}
+      {coinAnims.map(anim => (
+        <div
+          key={anim.id}
+          style={{
+            position: 'absolute',
+            bottom: GROUND_H + BLOCK_H + 18,
+            left: anim.x - 12,
+            fontSize: 22,
+            animation: 'pr-coin-collect 0.95s ease-out forwards',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          🪙
+        </div>
+      ))}
+
+      {/* ── Coin counter ─────────────────────────────────────────────────── */}
+      {collectedBonuses.size > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(251,191,36,0.15)',
+            border: '1.5px solid rgba(251,191,36,0.55)',
+            borderRadius: 12,
+            padding: '2px 9px',
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#fbbf24',
+            pointerEvents: 'none',
+          }}
+        >
+          🪙 ×{collectedBonuses.size}
         </div>
       )}
 
